@@ -12,7 +12,6 @@ import { useNavigate, getIntent, getInPreloadFn } from "../routing.js";
 import type { CacheEntry, NarrowResponse } from "../types.js";
 
 const LocationHeader = "Location";
-const PRELOAD_TIMEOUT = 5000;
 const CACHE_TIMEOUT = 180000;
 let cacheMap = new Map<string, CacheEntry>();
 
@@ -70,7 +69,11 @@ export type CachedFunction<T extends (...args: any) => any> = T extends (
     }
   : never;
 
-export function query<T extends (...args: any) => any>(fn: T, name: string): CachedFunction<T> {
+export function query<T extends (...args: any) => any>(
+  fn: T,
+  name: string,
+  { cacheTime = 5000 }: { cacheTime?: number } = {}
+): CachedFunction<T> {
   // prioritize GET for server functions
   if ((fn as any).GET) fn = (fn as any).GET;
   const cachedFn = ((...args: Parameters<T>) => {
@@ -105,10 +108,7 @@ export function query<T extends (...args: any) => any>(fn: T, name: string): Cac
     if (
       cached &&
       cached[0] &&
-      (isServer ||
-        intent === "native" ||
-        cached[4].count ||
-        Date.now() - cached[0] < PRELOAD_TIMEOUT)
+      (isServer || intent === "native" || cached[4].count || Date.now() - cached[0] < cacheTime)
     ) {
       if (tracking) {
         cached[4].count++;
